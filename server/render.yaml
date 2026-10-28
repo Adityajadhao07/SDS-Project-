@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: venue-booking-server
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        sync: false
+      - key: CLIENT_URL
+        sync: false
+      - key: TIMEZONE
+        sync: false
+      - key: FACULTY_AUTO_APPROVE
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
