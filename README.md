@@ -83,3 +83,4 @@ See `client/vercel.json` for configuration. Set `VITE_API_URL` in Vercel environ
 2. Set `DATABASE_URL` in server environment variables
 3. Run migrations: `npm run db:migrate`
 4. Run seed: `npm run db:seed`
+Preview deployment setup
