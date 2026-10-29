@@ -71,7 +71,7 @@ async function setupDatabase() {
       }
     }
 
-    let sessionSecret = process.env.JWT_SERVER || process.env.SESSION_SECRET;
+    let sessionSecret = process.env.JWT_SERVER || process.env.JWT_SECRET || process.env.SESSION_SECRET;
     if (!sessionSecret) {
       const generated = crypto.randomBytes(48).toString('base64url');
       await client.query('INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING',

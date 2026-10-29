@@ -1,6 +1,11 @@
 const { Pool } = require('pg');
 
-const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING;
+const connectionString = process.env.DATABASE_URL
+  || process.env.POSTGRES_URL
+  || process.env.POSTGRES_URL_NON_POOLING
+  || process.env.Dynamic_Storage_DATABASE_URL
+  || process.env.Dynamic_Storage_POSTGRES_URL
+  || process.env.Dynamic_Storage_POSTGRES_URL_NON_POOLING;
 if (!connectionString) {
   throw new Error('Set DATABASE_URL (provided by Vercel’s Neon integration) or POSTGRES_URL to your PostgreSQL connection URL.');
 }
