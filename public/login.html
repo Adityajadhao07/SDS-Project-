@@ -38,18 +38,25 @@
     document.getElementById('f').addEventListener('submit', async function (e) {
       e.preventDefault();
       const body = Object.fromEntries(new FormData(e.target));
-      const r = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const data = await r.json();
-      if (!r.ok) {
-        document.getElementById('msg').textContent = data.error;
-        return;
+      const msg = document.getElementById('msg');
+      const button = e.target.querySelector('button[type="submit"]');
+      button.disabled = true;
+      msg.textContent = '';
+      try {
+        const r = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await r.json().catch(() => null);
+        if (!r.ok) throw new Error(data?.error || `Login failed (server returned ${r.status}).`);
+        // Logged in! Go to the main booking page
+        location.href = data.role === 'admin' ? 'admin.html' : 'index.html';
+      } catch (err) {
+        msg.textContent = err.message || 'Could not reach the server. Please try again.';
+      } finally {
+        button.disabled = false;
       }
-      // Logged in! Go to the main booking page
-      location.href = data.role === 'admin' ? 'admin.html' : 'index.html';
     });
   </script>
 </body>

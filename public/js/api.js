@@ -1,6 +1,6 @@
 // API layer. Talks to your Express backend under /api (see API.md).
-// If the backend is not reachable, it switches to demo mode:
-// venues come from data/venues.json and bookings live in this browser's localStorage.
+// Venue details are bundled as a static JSON file. Account and booking APIs
+// require the PostgreSQL service; localhost alone retains the existing demo.
 (() => {
   const { toMin, toTime, fmtRange, store } = window.VBS;
   const BASE = window.VBS_API_BASE || '/api';
@@ -19,7 +19,7 @@
   }
 
   const norm = (v, i) => ({
-    id: v.id ?? i + 1, // venues.json has no id; the DB assigns 1..n in file order
+    id: v.id ?? i + 1,
     name: v.name,
     capacity: Number(v.capacity),
     type: v.type,
@@ -54,10 +54,18 @@
   // ---------- public API ----------
   api.init = async () => {
     try {
-      const data = await http('/venues');
-      if (!Array.isArray(data)) throw new Error('Not the venues API');
+      await http('/health');
       api.demo = false;
-    } catch {
+    } catch (error) {
+      if (error.status === 401) {
+        api.demo = false;
+        return false;
+      }
+      const localDevelopment = ['localhost', '127.0.0.1'].includes(location.hostname);
+      if (!localDevelopment) {
+        api.demo = false;
+        throw fail('The booking service could not reach its database. Please refresh in a moment or contact the site administrator.');
+      }
       api.demo = true;
     }
     return api.demo;
@@ -66,9 +74,8 @@
   api.me = () => http('/me');
 
   api.getVenues = async () => {
-    if (!api.demo) return (await http('/venues')).map(norm);
     if (!demoVenues) {
-      const res = await fetch('data/venues.json');
+      const res = await fetch('/data/venues.json');
       if (!res.ok) throw fail('Could not load the venue list.');
       demoVenues = (await res.json()).map(norm);
     }

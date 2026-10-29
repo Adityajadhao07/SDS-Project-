@@ -167,6 +167,7 @@ dialog.sheet[open] { animation: slide .22s ease-out; }
 .status-badge.pending { color: #614d00; background: #f6e9a6; }
 .status-badge.approved { color: #1f6846; background: #dcefe3; }
 .status-badge.rejected { color: #8e2f3e; background: #f8e2e5; }
+.status-badge.cancelled { color: #56615a; background: #e6e9e6; }
 .booking-review { color: var(--muted); font-size: 12px; margin-top: 5px; }
 .booking-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 12px; }
 .booking-summary > div { display: flex; align-items: baseline; gap: 9px; padding: 13px 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }

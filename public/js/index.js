@@ -212,7 +212,14 @@
   async function init() {
     wire();
     showLoading();
-    await api.init();
+    try {
+      await api.init();
+    } catch (e) {
+      $('#count').textContent = 'Booking service unavailable';
+      $('#grid').innerHTML = `<div class="error-box" style="grid-column:1/-1"><h2>Could not connect to the booking service</h2><p>${esc(e.message)}</p><button class="btn" id="retry">Try again</button></div>`;
+      $('#retry').addEventListener('click', () => location.reload());
+      return;
+    }
     try { api.user = await api.me(); } catch { location.href = 'login.html'; return; }
     if (api.user.role === 'admin') location.href = 'admin.html';
     $('#demoNote').hidden = !api.demo;

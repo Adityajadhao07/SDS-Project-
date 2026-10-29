@@ -1,52 +1,22 @@
-# API contract the frontend expects
+# VenueBook API
 
-Frontend files live in `public/`. Serve them from your Express app:
+The browser talks to the same-origin Express API under `/api`. Express serves the API; Vercel serves files under `public/` as static assets. The static catalogue is `venues.json`, served at `/data/venues.json`; PostgreSQL contains accounts, bookings, and sessions only.
 
-```js
-app.use(express.json());
-app.use(express.static('public'));   // before or after your /api routes
-```
+| Method | Path | Access | Purpose |
+|---|---|---|---|
+| POST | `/api/register` | Public | Create a student or faculty account. Faculty registration requires a configured faculty code. |
+| POST | `/api/login` | Public | Sign in and establish a persistent, HTTP-only session. |
+| POST | `/api/logout` | Signed in | End the session. |
+| GET | `/api/health` | Public | Check whether PostgreSQL is reachable. |
+| GET | `/api/me` | Signed in | Return the current account. |
+| GET | `/api/venues` | Signed in | List venues and their capacity/features. |
+| GET | `/api/bookings?date=YYYY-MM-DD` | Signed in | List occupied time slots for a date. |
+| GET | `/api/bookings?email=...` | Signed in | List the signed-in user's bookings; the session controls whose data is returned. |
+| POST | `/api/bookings` | Signed in | Request a booking. Requests start in `pending` status. |
+| DELETE | `/api/bookings/:id` | Owner or administrator | Mark a booking `cancelled` while retaining its record. |
+| GET | `/api/admin/bookings` | Administrator | List requests and review history. |
+| PATCH | `/api/admin/bookings/:id` | Administrator | Approve or decline a pending booking. |
 
-`server.js` in this folder already implements these endpoints.
+Errors return JSON `{ "error": "message" }`. PostgreSQL enforces that active pending/approved bookings for the same static venue ID and date cannot overlap, even when requests reach separate Vercel instances concurrently.
 
-```sql
-CREATE TABLE IF NOT EXISTS bookings (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  venueId INTEGER NOT NULL REFERENCES classrooms(id),
-  date TEXT NOT NULL,          -- YYYY-MM-DD
-  startTime TEXT NOT NULL,     -- HH:MM (24h)
-  endTime TEXT NOT NULL,       -- HH:MM
-  name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  attendees INTEGER NOT NULL,
-  purpose TEXT NOT NULL,
-  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-  status TEXT NOT NULL DEFAULT 'approved', -- pending | approved | rejected
-  reviewedAt TEXT,
-  reviewedBy TEXT
-);
-```
-
-## Endpoints
-
-| Method | Path | Returns |
-|---|---|---|
-| GET | `/api/venues` | `[{ id, name, capacity, type, soundSystem, projector }]` (rows of `classrooms`) |
-| GET | `/api/bookings?date=YYYY-MM-DD` | `[{ id, venueId, date, startTime, endTime, status }]` for occupied slots (pending and approved) |
-| GET | `/api/bookings?email=a@b.com` | Signed-in user's bookings, including `status`, `reviewedAt`, and `reviewedBy`; the session determines whose bookings are returned |
-| POST | `/api/bookings` | body `{ venueId, date, startTime, endTime, name, email, attendees, purpose }` -> created booking with `status: "pending"`; pending slots are held |
-| GET | `/api/admin/bookings` | Administrator only; full review queue and decision history |
-| PATCH | `/api/admin/bookings/:id` | Administrator only; body `{ status: "approved" | "rejected", note?: "..." }` |
-| DELETE | `/api/bookings/:id?email=a@b.com` | `{ ok: true }` (only if the email matches the booking) |
-
-## Errors
-
-Return JSON `{ "error": "message the user can read" }` with a status code.
-Use **409** for a time clash or an already-reviewed request, 400 for bad input, 404 if not found, and 403 when the signed-in user lacks the administrator role.
-Re-check overlap on the server: `startTime < existing.endTime AND endTime > existing.startTime`.
-
-## Notes
-
-- `soundSystem` / `projector` can be 0/1 or true/false.
-- If `/api/venues` fails, the frontend runs in **demo mode** (reads `public/data/venues.json`, stores bookings in localStorage). To point at another host, set `window.VBS_API_BASE = 'https://host/api'` before `js/api.js`.
-- Booking hours are 8 am to 8 pm in 30 minute steps. Change `START`/`END` in `js/common.js` to adjust.
+If the API is unavailable in production, the site shows a service error instead of saving fake bookings in browser storage. The local-only demo fallback is retained for `localhost` development.
