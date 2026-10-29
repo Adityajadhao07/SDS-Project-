@@ -194,24 +194,33 @@ app.get('/api/health', async (req, res, next) => {
   catch (err) { next(err); }
 });
 
-// Vercel reuses warm instances, but every request waits for one-time database
-// checks/seeding to finish after a cold start.
+// Vercel reuses warm instances, so share successful initialization. If Neon
+// times out during a cold start, clear the failed promise so the next request
+// can retry instead of leaving this function instance permanently unavailable.
 let sessionMiddleware;
-const databaseReady = setupDatabase().then((sessionSecret) => {
-  sessionMiddleware = session({
-    secret: sessionSecret,
-    store: new PostgresSessionStore(),
-    resave: false,
-    saveUninitialized: false,
-    cookie: { httpOnly: true, sameSite: 'lax', secure: isHttpsDeployment, maxAge: 1000 * 60 * 60 * 8 },
-  });
-  return null;
-}).catch((err) => {
-  console.error('Database initialization failed:', err.message);
-  return err;
-});
+let databaseReady;
+function initializeDatabase() {
+  if (!databaseReady) {
+    databaseReady = setupDatabase().then((sessionSecret) => {
+      sessionMiddleware = session({
+        secret: sessionSecret,
+        store: new PostgresSessionStore(),
+        resave: false,
+        saveUninitialized: false,
+        cookie: { httpOnly: true, sameSite: 'lax', secure: isHttpsDeployment, maxAge: 1000 * 60 * 60 * 8 },
+      });
+      return null;
+    }).catch((err) => {
+      console.error('Database initialization failed:', err.message);
+      databaseReady = null;
+      return err;
+    });
+  }
+  return databaseReady;
+}
+initializeDatabase();
 app.use('/api', (req, res, next) => {
-  databaseReady.then((err) => err
+  initializeDatabase().then((err) => err
     ? bad(res, 503, 'The database is not ready. Check the server configuration and try again.')
     : sessionMiddleware(req, res, next)).catch(next);
 });
@@ -453,7 +462,7 @@ app.use((err, req, res, next) => {
 });
 
 if (require.main === module) {
-  databaseReady
+  initializeDatabase()
     .then((err) => {
       if (err) throw err;
       return app.listen(PORT, () => console.log(`Website is running: http://localhost:${PORT}`));
