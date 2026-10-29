@@ -1,10 +1,13 @@
 const { Pool } = require('pg');
 
-const connectionString = process.env.DATABASE_URL
-  || process.env.POSTGRES_URL
-  || process.env.POSTGRES_URL_NON_POOLING
-  || process.env.Dynamic_Storage_DATABASE_URL
+// Prefer pooled URLs for the serverless runtime. In particular, Vercel's
+// Neon integration exposes both DATABASE_URL and POSTGRES_URL; POSTGRES_URL
+// is the pooled endpoint intended for application connections.
+const connectionString = process.env.POSTGRES_URL
   || process.env.Dynamic_Storage_POSTGRES_URL
+  || process.env.DATABASE_URL
+  || process.env.Dynamic_Storage_DATABASE_URL
+  || process.env.POSTGRES_URL_NON_POOLING
   || process.env.Dynamic_Storage_POSTGRES_URL_NON_POOLING;
 if (!connectionString) {
   throw new Error('Set DATABASE_URL (provided by Vercel’s Neon integration) or POSTGRES_URL to your PostgreSQL connection URL.');
@@ -16,7 +19,9 @@ const pool = new Pool({
   connectionString,
   max: 1,
   idleTimeoutMillis: 10000,
-  connectionTimeoutMillis: 10000,
+  // Neon can take several seconds to wake a serverless compute after idle time.
+  // Leave enough of Vercel's 60-second function window for that cold connection.
+  connectionTimeoutMillis: 30000,
   ssl: { rejectUnauthorized: false },
 });
 pool.on('error', (err) => console.error('Idle PostgreSQL connection error:', err.message));
