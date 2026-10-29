@@ -35,13 +35,18 @@ CREATE INDEX IF NOT EXISTS bookings_venue_date_idx ON bookings ("venueId", date)
 -- Vercel instances. Neon supports btree_gist on its standard PostgreSQL plans.
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 DO $$ BEGIN
-  ALTER TABLE bookings ADD CONSTRAINT bookings_no_overlapping_active
-    EXCLUDE USING gist (
-      "venueId" WITH =,
-      date WITH =,
-      tsrange(date + "startTime", date + "endTime", '[)') WITH &&
-    ) WHERE (status IN ('pending', 'approved'));
-EXCEPTION WHEN duplicate_object THEN NULL;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conname = 'bookings_no_overlapping_active'
+       AND conrelid = 'bookings'::regclass
+  ) THEN
+    ALTER TABLE bookings ADD CONSTRAINT bookings_no_overlapping_active
+      EXCLUDE USING gist (
+        "venueId" WITH =,
+        date WITH =,
+        tsrange(date + "startTime", date + "endTime", '[)') WITH &&
+      ) WHERE (status IN ('pending', 'approved'));
+  END IF;
 END $$;
 
 -- Sessions are shared across serverless instances, unlike in-memory sessions.
